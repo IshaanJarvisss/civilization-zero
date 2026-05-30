@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Civilization Zero: The 4-Agent Genesis</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="simulation-container">
+        <canvas id="simCanvas"></canvas>
+        <div id="ui-panel">
+            <h2>CIVILIZATION ZERO</h2>
+            <div class="subtitle">Autonomous Artificial Life</div>
+            <hr>
+            <p><strong>Day:</strong> <span id="stat-day">0</span></p>
+            <p><strong>Population:</strong> <span id="stat-pop">4</span></p>
+            <p><strong>Total Food:</strong> <span id="stat-res">0</span></p>
+            <p><strong>Status:</strong> <span id="stat-status" style="color: #00ffcc;">SIMULATING</span></p>
+            <hr>
+            <h3>Historical Logs</h3>
+            <div id="log-box"></div>
+        </div>
+    </div>
+    <script src="simulation.js"></script>
+</body>
+</html>
