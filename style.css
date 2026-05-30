@@ -1,75 +1,77 @@
 body {
     margin: 0;
-    background-color: #0a0a0c;
-    color: #e0e0e0;
+    background-color: #08080a;
+    color: #e2e2e9;
     font-family: 'Courier New', Courier, monospace;
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
-    overflow: hidden;
 }
 
 #simulation-container {
     display: flex;
-    border: 2px solid #222;
+    border: 3px solid #1a1a24;
     background: #000;
-    box-shadow: 0 0 20px rgba(0, 255, 204, 0.1);
+    box-shadow: 0 0 30px rgba(0, 255, 204, 0.05);
 }
 
 canvas {
-    background-color: #111115;
+    background-color: #0b0b0e;
+    display: block;
 }
 
 #ui-panel {
-    width: 280px;
-    padding: 20px;
-    border-left: 2px solid #222;
-    background-color: #0d0d11;
+    width: 300px;
+    padding: 25px;
+    border-left: 3px solid #1a1a24;
+    background-color: #0c0c10;
 }
 
 h2 {
     color: #00ffcc;
-    margin: 0 0 5px 0;
-    font-size: 20px;
-    letter-spacing: 1px;
+    margin: 0;
+    font-size: 22px;
+    letter-spacing: 1.5px;
 }
 
 .subtitle {
-    color: #666;
+    color: #555566;
     font-size: 11px;
     text-transform: uppercase;
+    margin-top: 4px;
     margin-bottom: 15px;
 }
 
 hr {
     border: 0;
-    border-top: 1px solid #222;
+    border-top: 1px solid #1a1a24;
     margin: 15px 0;
 }
 
 p {
-    margin: 8px 0;
+    margin: 10px 0;
     font-size: 14px;
+    letter-spacing: 0.5px;
 }
 
 h3 {
     color: #ff0055;
     font-size: 12px;
-    text-transform: uppercase;
-    margin: 0 0 10px 0;
+    letter-spacing: 1px;
+    margin: 0 0 12px 0;
 }
 
 #log-box {
-    height: 250px;
+    height: 280px;
     overflow-y: auto;
     font-size: 11px;
-    color: #8a8a93;
-    line-height: 1.5;
+    color: #888899;
+    line-height: 1.6;
 }
 
 #log-box div {
-    margin-bottom: 6px;
-    border-left: 2px solid #333;
-    padding-left: 5px;
+    margin-bottom: 8px;
+    border-left: 2px solid #ff0055;
+    padding-left: 6px;
 }
