@@ -1,22 +1,32 @@
 const canvas = document.getElementById('simCanvas');
 const ctx = canvas.getContext('2d');
 
-// Grid Setup (Slightly smaller map so the 4 agents find each other easier)
-const GRID_SIZE = 30; 
-const TILE_SIZE = 22; // Bigger tiles so it looks like a clear 2D world map
+const GRID_SIZE = 35; 
+const TILE_SIZE = 20; 
 canvas.width = GRID_SIZE * TILE_SIZE;
 canvas.height = GRID_SIZE * TILE_SIZE;
 
 let day = 0;
 let dayTimer = 0;
-const DAY_DURATION = 200; 
+const DAY_DURATION = 250; 
 
 let grid = [];
 let agents = [];
-let totalBirths = 4; // Tracks unique IDs cleanly
-const TILE = { LAND: 0, WATER: 1, FOOD: 2 };
+let animals = [];
+let totalBirths = 4;
 
-// --- 1. MAP GENERATION ---
+// REAL-WORLD RESOURCE TIERS
+const TILE = { 
+    LAND: 0, 
+    WATER: 1, 
+    BERRIES: 2, 
+    WOOD: 3, 
+    STONE: 4, 
+    HUT: 5, 
+    GRAVE: 6 
+};
+
+// --- 1. WORLD GENERATION ---
 function initWorld() {
     grid = [];
     for (let x = 0; x < GRID_SIZE; x++) {
@@ -25,47 +35,71 @@ function initWorld() {
             let type = TILE.LAND;
             let rand = Math.random();
             
-            // Create clear clumps of water patches and food patches
-            if (rand < 0.07) type = TILE.WATER;       
-            else if (rand < 0.14) type = TILE.FOOD;   
+            if (rand < 0.06) type = TILE.WATER;       
+            else if (rand < 0.12) type = TILE.BERRIES;   
+            else if (rand < 0.18) type = TILE.WOOD;      
+            else if (rand < 0.22) type = TILE.STONE;     
             
-            grid[x][y] = { type: type, originalType: type };
+            grid[x][y] = { type: type, originalType: type, tribeOwner: null };
         }
     }
 
-    // Spawn 4 distinct, colorful genetic founders
-    let tribeColors = [0, 120, 220, 280]; // Red, Green, Blue, Purple
-    let tribeNames = ["Alpha", "Beta", "Gamma", "Delta"];
+    // Spawn 4 Wild Fauna (Animals that run and breed)
+    for (let i = 0; i < 6; i++) {
+        animals.push({
+            x: Math.floor(Math.random() * GRID_SIZE),
+            y: Math.floor(Math.random() * GRID_SIZE),
+            energy: 50
+        });
+    }
+
+    // Genesis of the 4 Human Factions
+    let tribeColors = [0, 120, 225, 290]; // Red, Green, Blue, Purple Factions
+    let tribeNames = ["Khorne", "Eden", "Atlan", "Styx"];
     
     for (let i = 0; i < 4; i++) {
         agents.push(new Agent(
             Math.floor(Math.random() * GRID_SIZE),
             Math.floor(Math.random() * GRID_SIZE),
             null,
-            `Founder_${tribeNames[i]}`,
-            tribeColors[i]
+            `Anc_${tribeNames[i]}`,
+            tribeColors[i],
+            tribeNames[i]
         ));
     }
-    logEvent("GENESIS: 4 isolated factions dropped into the grid matrix.");
+    logEvent("GENESIS: 4 independent human souls awake in a harsh, unyielding world.");
 }
 
-// --- 2. AGENT LOGIC ENGINE ---
+// --- 2. HUMAN BRAIN CODE ---
 class Agent {
-    constructor(x, y, parent = null, name = "Unnamed", tribeColor = 0) {
+    constructor(x, y, parent = null, name = "Unnamed", tribeColor = 0, tribeName = "Nomad") {
         this.x = x;
         this.y = y;
         this.name = name;
         this.tribeColor = tribeColor;
-        this.isAttacking = false;
+        this.tribeName = tribeName;
+        this.isFighting = false;
+
+        // INVENTORY (Real Life Inventory Building Blocks)
+        this.wood = 0;
+        this.stone = 0;
+        this.hasHomeBase = false;
+        this.homeX = null;
+        this.homeY = null;
 
         if (parent) {
             this.dna = {
-                aggression: Math.max(0, Math.min(1, parent.dna.aggression + (Math.random() * 0.2 - 0.1))),
-                curiosity: Math.max(0, Math.min(1, parent.dna.curiosity + (Math.random() * 0.2 - 0.1)))
+                aggression: Math.max(0, Math.min(1, parent.dna.aggression + (Math.random() * 0.16 - 0.08))),
+                intelligence: Math.max(0, Math.min(1, parent.dna.intelligence + (Math.random() * 0.16 - 0.08)))
             };
-            this.memory = [...parent.memory]; // Inherit locations
+            this.memory = [...parent.memory];
+            if (parent.hasHomeBase) {
+                this.hasHomeBase = true;
+                this.homeX = parent.homeX;
+                this.homeY = parent.homeY;
+            }
         } else {
-            this.dna = { aggression: Math.random(), curiosity: Math.random() };
+            this.dna = { aggression: Math.random(), intelligence: Math.random() };
             this.memory = [];
         }
 
@@ -76,63 +110,69 @@ class Agent {
 
     update() {
         this.age++;
-        this.hunger -= 0.3;  
-        this.thirst -= 0.4;  
-        this.isAttacking = false;
+        // Metabolism scales with intelligence (smarter tools require slightly more mental fuel)
+        this.hunger -= (0.15 + (this.dna.intelligence * 0.05));  
+        this.thirst -= 0.25;  
+        this.isFighting = false;
 
+        // DEATH MECHANIC -> Creates a Permanent Monument/Grave
         if (this.hunger <= 0 || this.thirst <= 0) {
-            logEvent(`${this.name} died of starvation/dehydration.`);
+            if (grid[this.x][this.y].type === TILE.LAND) {
+                grid[this.x][this.y].type = TILE.GRAVE; // Leave historic memory
+            }
+            logEvent(`DIED: ${this.name} of the ${this.tribeName} Clan fell to the elements.`);
             return false; 
         }
 
-        // Combat behavior if highly aggressive
-        if (this.dna.aggression > 0.6 && this.hunger < 60) {
-            this.huntRivals();
-        }
-
-        // Standard Survival Loop
+        // REAL LIFE LOGIC PRIORITIES
         if (this.thirst < 50) {
             this.seekResource(TILE.WATER);
         } else if (this.hunger < 50) {
-            this.seekResource(TILE.FOOD);
+            // Smart or Aggressive agents choose to hunt live animals, others seek berries
+            if (this.dna.aggression > 0.4 && animals.length > 0) {
+                this.huntWildlife();
+            } else {
+                this.seekResource(TILE.BERRIES);
+            }
+        } else if (!this.hasHomeBase && this.wood >= 3 && this.stone >= 2) {
+            this.buildSettlement();
         } else {
-            if (Math.random() < this.dna.curiosity) this.wanderFar();
-            else this.wanderNear();
+            // Gathering Phase: Build materials for future generations
+            if (this.wood < 3) this.seekResource(TILE.WOOD);
+            else if (this.stone < 2) this.seekResource(TILE.STONE);
+            else if (this.hasHomeBase) this.returnHome();
+            else this.wander();
         }
 
-        this.consumeSurroundings();
+        this.interactWithCurrentTile();
 
-        // Balanced reproduction constraint
-        if (this.hunger > 85 && this.thirst > 85 && Math.random() < 0.005 && agents.length < 40) {
-            this.splitAndReplicate();
+        // Stricter Tribal Multiplication Requirements
+        if (this.hunger > 90 && this.thirst > 90 && this.hasHomeBase && Math.random() < 0.003 && agents.length < 35) {
+            this.procreate();
         }
 
         return true; 
     }
 
-    wanderNear() {
+    wander() {
         this.x = Math.max(0, Math.min(GRID_SIZE - 1, this.x + Math.floor(Math.random() * 3) - 1));
         this.y = Math.max(0, Math.min(GRID_SIZE - 1, this.y + Math.floor(Math.random() * 3) - 1));
     }
 
-    wanderFar() {
-        this.x = Math.max(0, Math.min(GRID_SIZE - 1, this.x + Math.floor(Math.random() * 5) - 2));
-        this.y = Math.max(0, Math.min(GRID_SIZE - 1, this.y + Math.floor(Math.random() * 5) - 2));
-    }
-
     seekResource(type) {
-        let target = this.memory.find(m => m.type === type);
+        let destination = this.memory.find(m => m.type === type);
         
-        if (!target) {
-            // Field of view scan
-            for (let dx = -5; dx <= 5; dx++) {
-                for (let dy = -5; dy <= 5; dy++) {
+        if (!destination) {
+            // Radius scan based on Intelligence DNA
+            let visionRange = Math.floor(4 + (this.dna.intelligence * 4));
+            for (let dx = -visionRange; dx <= visionRange; dx++) {
+                for (let dy = -visionRange; dy <= visionRange; dy++) {
                     let nx = this.x + dx;
                     let ny = this.y + dy;
                     if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
                         if (grid[nx][ny].type === type) {
-                            target = { x: nx, y: ny, type: type };
-                            this.memory.push(target);
+                            destination = { x: nx, y: ny, type: type };
+                            this.memory.push(destination);
                             break;
                         }
                     }
@@ -140,42 +180,79 @@ class Agent {
             }
         }
 
-        if (target) {
+        if (destination) {
+            this.x += Math.sign(destination.x - this.x);
+            this.y += Math.sign(destination.y - this.y);
+        } else {
+            this.wander();
+        }
+    }
+
+    huntWildlife() {
+        if (animals.length === 0) return;
+        // Target nearest animal
+        let target = animals[0];
+        let minDist = Math.abs(this.x - target.x) + Math.abs(this.y - target.y);
+        
+        animals.forEach(a => {
+            let d = Math.abs(this.x - a.x) + Math.abs(this.y - a.y);
+            if (d < minDist) { minDist = d; target = a; }
+        });
+
+        if (minDist <= 1) {
+            this.isFighting = true;
+            this.hunger = Math.min(100, this.hunger + 45); // Slaughter animal for meat energy
+            animals = animals.filter(a => a !== target); // Remove prey
+            if (Math.random() < 0.08) logEvent(`HUNT: ${this.name} successfully tracked and butchered wild fauna.`);
+        } else {
             this.x += Math.sign(target.x - this.x);
             this.y += Math.sign(target.y - this.y);
-        } else {
-            this.wanderNear();
         }
     }
 
-    huntRivals() {
-        // Track agents belonging to completely different family colors
-        let rival = agents.find(a => a !== this && a.tribeColor !== this.tribeColor);
-        if (rival) {
-            let dist = Math.abs(this.x - rival.x) + Math.abs(this.y - rival.y);
-            if (dist <= 1) {
-                this.isAttacking = true;
-                rival.hunger -= 30; // Drain rival
-                this.hunger = Math.min(100, this.hunger + 25); // Replenish self
-                if (Math.random() < 0.05) {
-                    logEvent(`CONFLICT: ${this.name} raided a rival node territory.`);
-                }
-            } else {
-                this.x += Math.sign(rival.x - this.x);
-                this.y += Math.sign(rival.y - this.y);
+    returnHome() {
+        this.x += Math.sign(this.homeX - this.x);
+        this.y += Math.sign(this.homeY - this.y);
+    }
+
+    buildSettlement() {
+        if (grid[this.x][this.y].type === TILE.LAND) {
+            grid[this.x][this.y].type = TILE.HUT;
+            grid[this.x][this.y].tribeOwner = this.tribeName;
+            this.hasHomeBase = true;
+            this.homeX = this.x;
+            this.homeY = this.y;
+            this.wood -= 3;
+            this.stone -= 2;
+            logEvent(`RISE OF EMPIRE: ${this.name} founded a permanent tribal homestead for Clan ${this.tribeName}.`);
+        }
+    }
+
+    interactWithCurrentTile() {
+        let current = grid[this.x][this.y];
+        
+        if (current.type === TILE.BERRIES) {
+            this.hunger = 100;
+            grid[this.x][this.y].type = TILE.LAND;
+        } else if (current.type === TILE.WOOD) {
+            this.wood++;
+            grid[this.x][this.y].type = TILE.LAND;
+        } else if (current.type === TILE.STONE) {
+            this.stone++;
+            grid[this.x][this.y].type = TILE.LAND;
+        }
+        
+        // Raiding mechanic: If aggressive agent steps on a rival hut, they pillage it
+        if (current.type === TILE.HUT && current.tribeOwner !== this.tribeName) {
+            if (this.dna.aggression > 0.5) {
+                this.isFighting = true;
+                this.hunger = Math.min(100, this.hunger + 30);
+                logEvent(`WARFARE: ${this.name} raided and sacked the rival village of Clan ${current.tribeOwner}!`);
+                if (Math.random() < 0.2) grid[this.x][this.y].type = TILE.LAND; // Burn hut down
             }
         }
-    }
 
-    consumeSurroundings() {
-        let currentTile = grid[this.x][this.y];
-        if (currentTile.type === TILE.FOOD) {
-            this.hunger = 100;
-            grid[this.x][this.y].type = TILE.LAND; 
-        }
-        if (this.isNearWater()) {
-            this.thirst = 100;
-        }
+        if (this.isNearWater()) this.thirst = 100;
     }
 
     isNearWater() {
@@ -191,44 +268,59 @@ class Agent {
         return false;
     }
 
-    splitAndReplicate() {
+    procreate() {
         totalBirths++;
-        let childName = `Node_${totalBirths}`;
-        agents.push(new Agent(this.x, this.y, this, childName, this.tribeColor));
-        this.hunger -= 40; 
-        logEvent(`EVOLUTION: ${this.name} birthed ${childName}, passing down behavioral DNA.`);
+        let childName = `Unit_${totalBirths}`;
+        agents.push(new Agent(this.x, this.y, this, childName, this.tribeColor, this.tribeName));
+        this.hunger -= 35;
+        if (Math.random() < 0.15) logEvent(`POPULATION: Lineage of Clan ${this.tribeName} expands. ${childName} is born.`);
     }
 }
 
-// --- 3. SYSTEM LOOP ---
+// --- 3. RUNTIME CONTROLLER ---
 function updateSimulation() {
     dayTimer++;
     if (dayTimer >= DAY_DURATION) {
         day++;
         dayTimer = 0;
-        regrowEnvironment();
+        regrowNature();
     }
 
+    // Update Human Agents
     agents = agents.filter(agent => agent.update());
 
+    // Update Wildlife Movements
+    animals.forEach(animal => {
+        animal.x = Math.max(0, Math.min(GRID_SIZE - 1, animal.x + Math.floor(Math.random() * 3) - 1));
+        animal.y = Math.max(0, Math.min(GRID_SIZE - 1, animal.y + Math.floor(Math.random() * 3) - 1));
+        // Reproduce wildlife slowly
+        if (Math.random() < 0.004 && animals.length < 15) {
+            animals.push({ x: animal.x, y: animal.y, energy: 50 });
+        }
+    });
+
+    // Update Dashboard Elements
     document.getElementById('stat-day').innerText = day;
     document.getElementById('stat-pop').innerText = agents.length;
+    document.getElementById('stat-animals').innerText = animals.length;
     
-    let currentFood = 0;
-    grid.forEach(row => row.forEach(tile => { if(tile.type === TILE.FOOD) currentFood++ }));
-    document.getElementById('stat-res').innerText = currentFood;
+    let activeTribes = new Set(agents.map(a => a.tribeName));
+    document.getElementById('stat-tribes').innerText = activeTribes.size;
 
     if (agents.length === 0) {
-        document.getElementById('stat-status').innerText = "WORLD COLLAPSE";
-        document.getElementById('stat-status').style.color = "#ff0055";
+        document.getElementById('stat-status').innerText = "ALL CIVILIZATIONS COLLAPSED";
+        document.getElementById('stat-status').style.color = "#ff3366";
     }
 }
 
-function regrowEnvironment() {
+function regrowNature() {
     for (let x = 0; x < GRID_SIZE; x++) {
         for (let y = 0; y < GRID_SIZE; y++) {
-            if (grid[x][y].originalType === TILE.FOOD && grid[x][y].type === TILE.LAND) {
-                if (Math.random() < 0.2) grid[x][y].type = TILE.FOOD; 
+            let tile = grid[x][y];
+            if (tile.type === TILE.LAND && tile.originalType !== TILE.LAND) {
+                if (Math.random() < 0.15) { // 15% regrowth probability daily
+                    grid[x][y].type = tile.originalType;
+                }
             }
         }
     }
@@ -240,35 +332,52 @@ function logEvent(msg) {
     logBox.scrollTop = logBox.scrollHeight;
 }
 
-// --- 4. VISUAL RENDER ENGINE ---
+// --- 4. ENGINE GRAPHICS MATRIX ---
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw the 2D grid boxes clearly
+    // Draw Complex Environment
     for (let x = 0; x < GRID_SIZE; x++) {
         for (let y = 0; y < GRID_SIZE; y++) {
-            if (grid[x][y].type === TILE.WATER) ctx.fillStyle = '#112233'; // Blue-ish water tile
-            else if (grid[x][y].type === TILE.FOOD) ctx.fillStyle = '#143b29';  // Green berry bush tile
-            else ctx.fillStyle = '#0f0f13'; // Plain land grid box
+            let tile = grid[x][y];
+            if (tile.type === TILE.WATER) ctx.fillStyle = '#112033'; // River/Oasis
+            else if (tile.type === TILE.BERRIES) ctx.fillStyle = '#113c24'; // Foraging fields
+            else if (tile.type === TILE.WOOD) ctx.fillStyle = '#2c2214'; // Ancient Woods
+            else if (tile.type === TILE.STONE) ctx.fillStyle = '#25252b'; // Mountain Quarries
+            else if (tile.type === TILE.HUT) ctx.fillStyle = '#543d2b'; // TRIBAL SETTLEMENT HOMESTEAD
+            else if (tile.type === TILE.GRAVE) ctx.fillStyle = '#3c1825'; // HISTORICAL MONUMENT GRAVEYARD
+            else ctx.fillStyle = '#09090b'; // Plain Unexplored Dirt
             
             ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE - 1, TILE_SIZE - 1);
+
+            // Give built structures a neat glowing neon outline frame
+            if (tile.type === TILE.HUT) {
+                ctx.strokeStyle = '#00ffcc';
+                ctx.strokeRect(x * TILE_SIZE + 1, y * TILE_SIZE + 1, TILE_SIZE - 3, TILE_SIZE - 3);
+            }
         }
     }
 
-    // Draw Agents as neon entity orbs
+    // Draw White Wildlife Entities (Prey running away)
+    animals.forEach(animal => {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(animal.x * TILE_SIZE + TILE_SIZE/3, animal.y * TILE_SIZE + TILE_SIZE/3, TILE_SIZE/3, TILE_SIZE/3);
+    });
+
+    // Draw Human Civilization Agents
     agents.forEach(agent => {
-        if (agent.isAttacking) {
-            ctx.fillStyle = '#ff0055'; // Flash hot pink/red during a fight
+        if (agent.isFighting) {
+            ctx.fillStyle = '#ff0055'; // Combat flash indicators
             ctx.shadowColor = '#ff0055';
             ctx.shadowBlur = 12;
         } else {
-            ctx.fillStyle = `hsl(${agent.tribeColor}, 95%, 55%)`; // Saturated faction color
+            ctx.fillStyle = `hsl(${agent.tribeColor}, 95%, 55%)`; 
             ctx.shadowColor = `hsl(${agent.tribeColor}, 95%, 55%)`;
             ctx.shadowBlur = 6;
         }
         
         ctx.beginPath();
-        ctx.arc(agent.x * TILE_SIZE + TILE_SIZE / 2, agent.y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
+        ctx.arc(agent.x * TILE_SIZE + TILE_SIZE / 2, agent.y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 3.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0; 
     });
