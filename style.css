@@ -1,6 +1,6 @@
 body {
     margin: 0;
-    background-color: #08080a;
+    background-color: #050508;
     color: #e2e2e9;
     font-family: 'Courier New', Courier, monospace;
     display: flex;
@@ -11,27 +11,27 @@ body {
 
 #simulation-container {
     display: flex;
-    border: 3px solid #1a1a24;
+    border: 3px solid #1f1f2e;
     background: #000;
-    box-shadow: 0 0 30px rgba(0, 255, 204, 0.05);
+    box-shadow: 0 0 35px rgba(0, 255, 204, 0.08);
 }
 
 canvas {
-    background-color: #0b0b0e;
+    background-color: #07070a;
     display: block;
 }
 
 #ui-panel {
-    width: 300px;
+    width: 320px;
     padding: 25px;
-    border-left: 3px solid #1a1a24;
-    background-color: #0c0c10;
+    border-left: 3px solid #1f1f2e;
+    background-color: #09090d;
 }
 
 h2 {
     color: #00ffcc;
     margin: 0;
-    font-size: 22px;
+    font-size: 20px;
     letter-spacing: 1.5px;
 }
 
@@ -45,7 +45,7 @@ h2 {
 
 hr {
     border: 0;
-    border-top: 1px solid #1a1a24;
+    border-top: 1px solid #1f1f2e;
     margin: 15px 0;
 }
 
@@ -56,22 +56,22 @@ p {
 }
 
 h3 {
-    color: #ff0055;
+    color: #ff3366;
     font-size: 12px;
     letter-spacing: 1px;
     margin: 0 0 12px 0;
 }
 
 #log-box {
-    height: 280px;
+    height: 320px;
     overflow-y: auto;
     font-size: 11px;
-    color: #888899;
+    color: #8c8c9e;
     line-height: 1.6;
 }
 
 #log-box div {
     margin-bottom: 8px;
-    border-left: 2px solid #ff0055;
+    border-left: 2px solid #00ffcc;
     padding-left: 6px;
 }
